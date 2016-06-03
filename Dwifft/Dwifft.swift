@@ -72,9 +72,13 @@ public enum DiffStep<T> : CustomDebugStringConvertible {
 public extension Array where Element: Equatable {
     
     /// Returns the sequence of ArrayDiffResults required to transform one array into another.
-    public func diff(other: [Element]) -> Diff<Element> {
-        let table = MemoizedSequenceComparison.buildTable(self, other, self.count, other.count)
+    public func diff(other: [Element], equatableFunction: (Element, Element) -> Bool ) -> Diff<Element> {
+        let table = MemoizedSequenceComparison.buildTable(self, other, self.count, other.count, equatableFunction)
         return Array.diffFromIndices(table, self, other, self.count, other.count)
+    }
+    
+    public func diff(other: [Element] ) -> Diff<Element> {
+        return self.diff(other, equatableFunction: ==)
     }
     
     /// Walks back through the generated table to generate the diff.
@@ -113,7 +117,11 @@ public extension Array where Element: Equatable {
     
     /// Returns the longest common subsequence between two arrays.
     public func LCS(other: [Element]) -> [Element] {
-        let table = MemoizedSequenceComparison.buildTable(self, other, self.count, other.count)
+        return self.LCS(other, equatableFunction: ==)
+    }
+    
+    public func LCS(other: [Element], equatableFunction: (Element, Element) -> Bool ) -> [Element] {
+        let table = MemoizedSequenceComparison.buildTable(self, other, self.count, other.count, equatableFunction)
         return Array.lcsFromIndices(table, self, other, self.count, other.count)
     }
     
@@ -137,14 +145,14 @@ public extension Array where Element: Equatable {
 }
 
 internal struct MemoizedSequenceComparison<T: Equatable> {
-    static func buildTable(x: [T], _ y: [T], _ n: Int, _ m: Int) -> [[Int]] {
+    static func buildTable(x: [T], _ y: [T], _ n: Int, _ m: Int, _ isEqual: (T, T) -> Bool) -> [[Int]] {
         var table = Array(count: n + 1, repeatedValue: Array(count: m + 1, repeatedValue: 0))
         for i in 0...n {
             for j in 0...m {
                 if (i == 0 || j == 0) {
                     table[i][j] = 0
                 }
-                else if x[i-1] == y[j-1] {
+                else if isEqual(x[i-1],y[j-1]) {
                     table[i][j] = table[i-1][j-1] + 1
                 } else {
                     table[i][j] = max(table[i-1][j], table[i][j-1])
